@@ -79,16 +79,15 @@ export default function HistoryList() {
             key={e.id}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 text-sm"
           >
-            <div
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                e.status === 'on' ? 'bg-amber-500' : 'bg-red-500'
-              }`}
-            />
+            <div className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${
+              e.status === 'on'
+                ? 'bg-amber-500/20 text-amber-400'
+                : 'bg-red-600/20 text-red-400'
+            }`}>
+              {e.status === 'on' ? 'ON' : 'OFF'}
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="text-zinc-200 font-medium">
-                {e.status === 'on' ? 'Power On' : 'Power Off'}
-              </div>
-              <div className="text-zinc-500 text-xs font-mono truncate">
+              <div className="text-zinc-300 text-xs font-mono truncate">
                 {formatTime(e.started_at)}
               </div>
             </div>

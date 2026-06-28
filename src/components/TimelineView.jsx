@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 function getHourBlock(status) {
   if (status === 'on') return 'bg-amber-500';
-  if (status === 'off') return 'bg-zinc-700';
+  if (status === 'off') return 'bg-red-800';
   return 'bg-zinc-800';
 }
 
@@ -97,7 +97,7 @@ export default function TimelineView() {
           <div className="w-3 h-3 rounded-sm bg-amber-500" /> On
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-zinc-700" /> Off
+          <div className="w-3 h-3 rounded-sm bg-red-800" /> Off
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-zinc-800" /> Unknown

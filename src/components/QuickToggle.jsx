@@ -62,28 +62,28 @@ export default function QuickToggle() {
         onClick={handleToggle}
         disabled={toggling}
         className={`
-          w-full max-w-xs h-28 rounded-2xl font-bold text-xl
+          w-full max-w-sm h-48 rounded-3xl font-bold text-3xl
           transition-all duration-300 ease-in-out
           disabled:opacity-50 disabled:cursor-not-allowed
           ${isOn
-            ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/30'
-            : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
+            ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-xl shadow-amber-500/30'
+            : 'bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-600/30'
           }
         `}
       >
         {toggling ? (
-          <span className="animate-pulse">...</span>
+          <span className="text-4xl animate-pulse">...</span>
         ) : isOn ? (
-          <span className="flex flex-col items-center gap-1">
-            <span className="text-3xl">⚡</span>
+          <span className="flex flex-col items-center gap-2">
+            <span className="text-6xl">⚡</span>
             <span>POWER IS ON</span>
-            <span className="text-xs font-normal opacity-70">tap if power goes off</span>
+            <span className="text-sm font-normal opacity-70">tap if power goes off</span>
           </span>
         ) : (
-          <span className="flex flex-col items-center gap-1">
-            <span className="text-3xl">🔴</span>
+          <span className="flex flex-col items-center gap-2">
+            <span className="text-6xl">🔴</span>
             <span>POWER IS OFF</span>
-            <span className="text-xs font-normal opacity-70">tap when power returns</span>
+            <span className="text-sm font-normal opacity-70">tap when power returns</span>
           </span>
         )}
       </button>
