@@ -1,16 +1,55 @@
-# React + Vite
+# NEPA Trackr
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Power data logging for Igbe Road, Ikorodu. Records IKEDC supply events, visualises patterns, and generates data-backed analysis for formal complaints.
 
-Currently, two official plugins are available:
+**Stack:** React (Vite) + Turso + Vercel + Gemini API
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Quick Toggle** — one-tap log power on/off events
+- **Timeline View** — 24-hour colour-coded grid (amber = on, red = off)
+- **History** — scrollable event log with edit & delete
+- **Analysis** — Gemini-powered pattern detection and letter talking points
+- **PWA** — installable on your phone's home screen
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Project Structure
 
-## Expanding the Oxlint configuration
+```
+api/              ← Vercel serverless functions
+├── log.js        POST open/close power events
+├── entries.js    GET event history
+├── entry.js      PUT update / DELETE single entry
+└── analyse.js    POST to Gemini for pattern analysis
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+src/
+├── App.jsx
+├── components/
+│   ├── QuickToggle.jsx
+│   ├── TimelineView.jsx
+│   ├── HistoryList.jsx
+│   ├── AnalysisPanel.jsx
+│   ├── LogForm.jsx
+│   ├── EditEntryModal.jsx
+│   └── ConfirmModal.jsx
+└── main.jsx
+```
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+## Deploy
+
+Push to main — Vercel auto-deploys. Environment variables required:
+
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+- `GEMINI_API_KEY`
+
+---
+
+Contributor: Awesohme
+Built for Igbe Road, Ikorodu.
