@@ -81,8 +81,8 @@ export default function HistoryList() {
           >
             <div className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${
               e.status === 'on'
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'bg-red-600/20 text-red-400'
+                ? 'bg-emerald-600/20 text-emerald-400'
+                : 'bg-rose-700/20 text-rose-400'
             }`}>
               {e.status === 'on' ? 'ON' : 'OFF'}
             </div>

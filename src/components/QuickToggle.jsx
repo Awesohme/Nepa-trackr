@@ -66,8 +66,8 @@ export default function QuickToggle() {
           transition-all duration-300 ease-in-out
           disabled:opacity-50 disabled:cursor-not-allowed
           ${isOn
-            ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-xl shadow-amber-500/30'
-            : 'bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-600/30'
+            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30'
+            : 'bg-rose-700 hover:bg-rose-600 text-white shadow-xl shadow-rose-700/30'
           }
         `}
       >
@@ -77,6 +77,7 @@ export default function QuickToggle() {
           <span className="flex flex-col items-center gap-2">
             <span className="text-6xl">⚡</span>
             <span>POWER IS ON</span>
+            <span className="text-sm font-normal opacity-70">welcome back</span>
             <span className="text-sm font-normal opacity-70">tap if power goes off</span>
           </span>
         ) : (

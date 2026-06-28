@@ -44,7 +44,7 @@ export default function LogForm({ onLogged }) {
           onClick={() => setStatus('on')}
           className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
             status === 'on'
-              ? 'bg-amber-500 text-black shadow-sm'
+              ? 'bg-emerald-600 text-white shadow-sm'
               : 'bg-zinc-800 text-zinc-400'
           }`}
         >
@@ -55,7 +55,7 @@ export default function LogForm({ onLogged }) {
           onClick={() => setStatus('off')}
           className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
             status === 'off'
-              ? 'bg-red-600 text-white shadow-sm'
+              ? 'bg-rose-700 text-white shadow-sm'
               : 'bg-zinc-800 text-zinc-400'
           }`}
         >
@@ -67,7 +67,7 @@ export default function LogForm({ onLogged }) {
         placeholder="Notes (optional) — e.g. transformer fault"
         value={notes}
         onChange={e => setNotes(e.target.value)}
-        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-600 transition-colors"
+        className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-600 transition-colors"
       />
       <button
         type="submit"

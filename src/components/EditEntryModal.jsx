@@ -57,7 +57,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               onClick={() => setStatus('on')}
               className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
                 status === 'on'
-                  ? 'bg-amber-500 text-black'
+                   ? 'bg-emerald-600 text-white'
                   : 'bg-zinc-800 text-zinc-400'
               }`}
             >
@@ -68,7 +68,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               onClick={() => setStatus('off')}
               className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
                 status === 'off'
-                  ? 'bg-red-600 text-white'
+                   ? 'bg-rose-700 text-white'
                   : 'bg-zinc-800 text-zinc-400'
               }`}
             >
@@ -83,7 +83,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               value={startedAt}
               onChange={e => setStartedAt(e.target.value)}
               required
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-600 transition-colors [color-scheme:dark]"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]"
             />
           </div>
 
@@ -93,7 +93,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               type="datetime-local"
               value={endedAt}
               onChange={e => setEndedAt(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-600 transition-colors [color-scheme:dark]"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]"
             />
           </div>
 
@@ -104,7 +104,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. transformer fault"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-600 transition-colors"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-600 transition-colors"
             />
           </div>
 
@@ -119,7 +119,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold transition-all disabled:opacity-50"
+               className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
