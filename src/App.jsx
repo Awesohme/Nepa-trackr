@@ -4,6 +4,7 @@ import TimelineView from './components/TimelineView';
 import HistoryList from './components/HistoryList';
 import AnalysisPanel from './components/AnalysisPanel';
 import LogForm from './components/LogForm';
+import UpdateBanner from './components/UpdateBanner';
 
 const TABS = [
   { key: 'toggle', label: 'Log' },
@@ -54,6 +55,7 @@ export default function App() {
         {tab === 'history' && <HistoryList />}
         {tab === 'analysis' && <AnalysisPanel />}
       </main>
+      <UpdateBanner />
     </div>
   );
 }
