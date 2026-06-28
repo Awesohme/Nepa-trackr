@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function getHourBlock(status, hour) {
+function getHourBlock(status) {
   if (status === 'on') return 'bg-amber-500';
   if (status === 'off') return 'bg-zinc-700';
   return 'bg-zinc-800';
@@ -63,6 +63,7 @@ export default function TimelineView() {
       ) : (
         <div className="space-y-2">
           <div className="flex gap-0.5 mb-1">
+            <div className="w-16 shrink-0" />
             {Array.from({ length: 24 }, (_, i) => (
               <div key={i} className="flex-1 text-[8px] text-zinc-600 text-center font-mono">
                 {String(i).padStart(2, '0')}
@@ -80,7 +81,7 @@ export default function TimelineView() {
                   return (
                     <div
                       key={hour}
-                      className={`flex-1 h-5 rounded-sm ${getHourBlock(status, hour)}`}
+                      className={`flex-1 h-5 rounded-sm ${getHourBlock(status)}`}
                       title={`${date.toLocaleDateString()} ${String(hour).padStart(2, '0')}:00 - ${status || 'unknown'}`}
                     />
                   );
