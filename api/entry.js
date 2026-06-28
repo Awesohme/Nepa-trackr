@@ -8,6 +8,25 @@ const db = createClient({
 export default async function handler(req, res) {
   const { method } = req;
 
+  if (method === 'POST') {
+    const { started_at, ended_at, status, notes } = req.body;
+    if (!started_at || !status) {
+      return res.status(400).json({ error: 'Missing started_at or status' });
+    }
+
+    const duration_minutes = started_at && ended_at
+      ? Math.round((new Date(ended_at) - new Date(started_at)) / 60000)
+      : null;
+
+    await db.execute({
+      sql: `INSERT INTO power_events (status, started_at, ended_at, duration_minutes, notes)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [status, started_at, ended_at || null, duration_minutes, notes || null],
+    });
+
+    return res.status(200).json({ ok: true });
+  }
+
   if (method === 'PUT') {
     const { id, started_at, ended_at, status, notes } = req.body;
     if (!id) return res.status(400).json({ error: 'Missing id' });

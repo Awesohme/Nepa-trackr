@@ -21,11 +21,7 @@ export default function TimeRangeFilter({ value, onPreset, onCustom, start, end 
   const isCustom = value === null;
 
   function handlePreset(p) {
-    if (p.days !== null) {
-      onPreset(p.days);
-    } else {
-      onPreset(null);
-    }
+    onPreset(p.days !== null ? p.days : null);
   }
 
   function applyCustom() {
@@ -36,41 +32,41 @@ export default function TimeRangeFilter({ value, onPreset, onCustom, start, end 
 
   return (
     <div>
-      <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-        {PRESETS.map(p => (
-          <button
-            key={p.label}
-            onClick={() => handlePreset(p)}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              (p.days === null && isCustom) || value === p.days
-                ? 'bg-emerald-600 text-white'
-                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="segmented overflow-x-auto scrollbar-none">
+        {PRESETS.map(p => {
+          const active = (p.days === null && isCustom) || value === p.days;
+          return (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p)}
+              data-active={active}
+              className="segmented-item shrink-0 px-3"
+            >
+              {p.label}
+            </button>
+          );
+        })}
       </div>
 
       {isCustom && (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 animate-fade-in">
           <input
             type="date"
             value={customStart}
             onChange={e => setCustomStart(e.target.value)}
-            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]"
+            className="field flex-1 text-xs"
           />
-          <span className="text-zinc-600 text-xs">→</span>
+          <span className="text-faint text-xs">→</span>
           <input
             type="date"
             value={customEnd}
             onChange={e => setCustomEnd(e.target.value)}
-            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]"
+            className="field flex-1 text-xs"
           />
           <button
             onClick={applyCustom}
             disabled={!customStart || !customEnd}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold disabled:opacity-50"
+            className="shrink-0 btn-accent px-3.5 py-2 text-xs"
           >
             Go
           </button>

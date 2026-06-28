@@ -1,7 +1,26 @@
 import { useState, useEffect } from 'react';
+import { parseDbDate } from '../lib/time';
+
+function useElapsed(startedAt) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const start = parseDbDate(startedAt);
+  if (!start) return '';
+  const secs = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
 
 export default function QuickToggle() {
   const [openEvent, setOpenEvent] = useState(null);
+  const [lastEvent, setLastEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
 
@@ -9,8 +28,9 @@ export default function QuickToggle() {
     fetch('/api/entries?days=1')
       .then(r => r.json())
       .then(rows => {
-        const open = rows.find(r => !r.ended_at);
-        setOpenEvent(open || null);
+        const list = Array.isArray(rows) ? rows : [];
+        setOpenEvent(list.find(r => !r.ended_at) || null);
+        setLastEvent(list[0] || null); // most recent, ordered started_at DESC
       })
       .finally(() => setLoading(false));
   }, []);
@@ -30,14 +50,18 @@ export default function QuickToggle() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'open', status: newStatus }),
         });
-        setOpenEvent({ status: newStatus, started_at: new Date().toISOString() });
+        const ev = { status: newStatus, started_at: new Date().toISOString() };
+        setOpenEvent(ev);
+        setLastEvent(ev);
       } else {
         await fetch('/api/log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'open', status: 'on' }),
         });
-        setOpenEvent({ status: 'on', started_at: new Date().toISOString() });
+        const ev = { status: 'on', started_at: new Date().toISOString() };
+        setOpenEvent(ev);
+        setLastEvent(ev);
       }
     } catch (e) {
       console.error('Toggle failed', e);
@@ -46,51 +70,51 @@ export default function QuickToggle() {
     }
   }
 
+  const isOn = openEvent?.status === 'on';
+  const elapsed = useElapsed(openEvent?.started_at);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <div className="animate-pulse text-zinc-500 text-sm">Loading...</div>
+      <div className="glass-card grid place-items-center h-56">
+        <div className="animate-pulse text-muted text-sm">Loading…</div>
       </div>
     );
   }
 
-  const isOn = openEvent?.status === 'on';
+  const grad = isOn
+    ? 'linear-gradient(160deg, #10b981, #047857)'
+    : 'linear-gradient(160deg, #f43f5e, #9f1239)';
+  const glow = isOn ? 'rgba(16,185,129,0.45)' : 'rgba(244,63,94,0.45)';
 
   return (
     <div className="flex flex-col items-center gap-4">
       <button
         onClick={handleToggle}
         disabled={toggling}
-        className={`
-          w-full max-w-sm h-48 rounded-3xl font-bold text-3xl
-          transition-all duration-300 ease-in-out
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${isOn
-            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30'
-            : 'bg-rose-700 hover:bg-rose-600 text-white shadow-xl shadow-rose-700/30'
-          }
-        `}
+        className="w-full h-56 rounded-[1.75rem] font-bold text-white transition-transform duration-300 ease-out active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
+        style={{ background: grad, boxShadow: `0 20px 50px -12px ${glow}` }}
       >
         {toggling ? (
-          <span className="text-4xl animate-pulse">...</span>
-        ) : isOn ? (
-          <span className="flex flex-col items-center gap-2">
-            <span className="text-6xl">⚡</span>
-            <span>POWER IS ON</span>
-            <span className="text-sm font-normal opacity-70">welcome back</span>
-            <span className="text-sm font-normal opacity-70">tap if power goes off</span>
-          </span>
+          <span className="text-3xl animate-pulse">…</span>
         ) : (
           <span className="flex flex-col items-center gap-2">
-            <span className="text-6xl">🔴</span>
-            <span>POWER IS OFF</span>
-            <span className="text-sm font-normal opacity-70">tap when power returns</span>
+            <span className="text-6xl drop-shadow">{isOn ? '⚡' : '🔴'}</span>
+            <span className="text-2xl tracking-tight">{isOn ? 'POWER IS ON' : 'POWER IS OFF'}</span>
+            {openEvent && (
+              <span className="text-sm font-semibold opacity-90 font-mono">{elapsed}</span>
+            )}
+            <span className="text-xs font-normal opacity-75">
+              {isOn ? 'tap if power goes off' : 'tap when power returns'}
+            </span>
           </span>
         )}
       </button>
-      {openEvent && (
-        <div className="text-xs text-zinc-500 font-mono">
-          Since {new Date(openEvent.started_at).toLocaleTimeString()}
+
+      {lastEvent && (
+        <div className="text-xs text-muted font-mono text-center">
+          {openEvent
+            ? `${isOn ? 'On' : 'Off'} since ${parseDbDate(lastEvent.started_at)?.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+            : `Last logged ${lastEvent.status === 'on' ? 'On' : 'Off'} · ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`}
         </div>
       )}
     </div>

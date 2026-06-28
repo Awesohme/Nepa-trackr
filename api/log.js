@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const { status } = req.body;
     await db.execute({
       sql: `INSERT INTO power_events (status, started_at, notes)
-            VALUES (?, datetime('now'), ?)`,
+            VALUES (?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), ?)`,
       args: [status, notes || null],
     });
     return res.status(200).json({ ok: true });
@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     const { id, started_at } = open.rows[0];
     await db.execute({
       sql: `UPDATE power_events
-            SET ended_at = datetime('now'),
-                duration_minutes = ROUND((julianday(datetime('now')) - julianday(?)) * 1440)
+            SET ended_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                duration_minutes = ROUND((julianday('now') - julianday(?)) * 1440)
             WHERE id = ?`,
       args: [started_at, id],
     });
