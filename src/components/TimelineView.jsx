@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import TimeRangeFilter from './TimeRangeFilter';
 
 function getHourBlock(status) {
   if (status === 'on') return 'bg-emerald-600';
@@ -7,21 +8,33 @@ function getHourBlock(status) {
 }
 
 export default function TimelineView() {
-  const [days, setDays] = useState(7);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(7);
+  const [customRange, setCustomRange] = useState(null);
+
+  function buildUrl() {
+    if (customRange) {
+      return `/api/entries?start=${encodeURIComponent(customRange.start)}&end=${encodeURIComponent(customRange.end)}`;
+    }
+    return `/api/entries?days=${days}`;
+  }
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/entries?days=${days}`)
+    fetch(buildUrl())
       .then(r => r.json())
       .then(setEntries)
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, customRange]);
 
   const today = new Date();
   const dayLabels = [];
-  for (let i = days - 1; i >= 0; i--) {
+  const numDays = customRange
+    ? Math.ceil((new Date(customRange.end) - new Date(customRange.start)) / (1000 * 60 * 60 * 24)) + 1
+    : days;
+
+  for (let i = numDays - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     dayLabels.push(d);
@@ -42,20 +55,29 @@ export default function TimelineView() {
     return event ? event.status : null;
   }
 
+  function handlePreset(d) {
+    setDays(d);
+    setCustomRange(null);
+  }
+
+  function handleCustom(start, end) {
+    setCustomRange({ start, end });
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Timeline</h2>
-        <select
-          value={days}
-          onChange={e => setDays(Number(e.target.value))}
-          className="bg-zinc-800 text-zinc-300 text-xs rounded-lg px-3 py-1.5 border border-zinc-700"
-        >
-          <option value={1}>1 day</option>
-          <option value={3}>3 days</option>
-          <option value={7}>7 days</option>
-          <option value={14}>14 days</option>
-        </select>
+      </div>
+
+      <div className="mb-4">
+        <TimeRangeFilter
+          value={customRange ? null : days}
+          start={customRange?.start}
+          end={customRange?.end}
+          onPreset={handlePreset}
+          onCustom={handleCustom}
+        />
       </div>
 
       {loading ? (

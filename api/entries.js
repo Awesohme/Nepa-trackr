@@ -8,7 +8,17 @@ const db = createClient({
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
-  const { days = 7 } = req.query;
+  const { days = 7, start, end } = req.query;
+
+  if (start && end) {
+    const result = await db.execute({
+      sql: `SELECT * FROM power_events
+            WHERE started_at >= ? AND started_at <= ?
+            ORDER BY started_at DESC`,
+      args: [start, end],
+    });
+    return res.status(200).json(result.rows);
+  }
 
   const result = await db.execute({
     sql: `SELECT * FROM power_events
