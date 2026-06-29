@@ -100,8 +100,8 @@ export default function QuickToggle() {
       {lastEvent && (
         <div className="text-xs text-muted font-mono text-center">
           {openEvent
-            ? `${isOn ? 'On' : 'Off'} since ${parseDbDate(lastEvent.started_at)?.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-            : `Last logged ${lastEvent.status === 'on' ? 'On' : 'Off'} · ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`}
+            ? `${isOn ? 'On' : 'Off'} since ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+            : `Last logged ${lastEvent.status === 'on' ? 'On' : 'Off'} · ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
         </div>
       )}
     </div>
