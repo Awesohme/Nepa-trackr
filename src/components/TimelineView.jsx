@@ -1,8 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import TimeRangeFilter from './TimeRangeFilter';
-import { parseDbDate, formatDuration } from '../lib/time';
+import ConfirmModal from './ConfirmModal';
+import EditEntryModal from './EditEntryModal';
+import { parseDbDate, fmtTime, formatDuration } from '../lib/time';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const TIME_OPTS = {
+  weekday: 'short', day: 'numeric', month: 'short',
+  hour: '2-digit', minute: '2-digit',
+};
+
+const PAGE_INITIAL = 5;
+const PAGE_STEP = 10;
 
 // Short label for a run's length in whole hours, e.g. 6 -> "6h".
 function shortHours(h) {
@@ -20,22 +30,28 @@ export default function TimelineView() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
   const [customRange, setCustomRange] = useState(null);
+  const [visible, setVisible] = useState(PAGE_INITIAL);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const scrollRef = useRef(null);
 
-  function buildUrl() {
+  const buildUrl = useCallback(() => {
     if (customRange) {
       return `/api/entries?start=${encodeURIComponent(customRange.start)}&end=${encodeURIComponent(customRange.end)}`;
     }
     return `/api/entries?days=${days}`;
-  }
+  }, [days, customRange]);
 
-  useEffect(() => {
+  const loadEntries = useCallback(() => {
     setLoading(true);
     fetch(buildUrl())
       .then(r => r.json())
       .then(rows => setEntries(Array.isArray(rows) ? rows : []))
       .finally(() => setLoading(false));
-  }, [days, customRange]);
+  }, [buildUrl]);
+
+  // Reload when the range changes, and reset pagination to the first page.
+  useEffect(() => { loadEntries(); setVisible(PAGE_INITIAL); }, [loadEntries]);
 
   // Snap the horizontally-scrollable grid so the current hour is centred on first render.
   useEffect(() => {
@@ -112,22 +128,31 @@ export default function TimelineView() {
     return runs;
   }
 
-  // Batch summary straight from events (each event = one batch), newest first.
-  const batches = entries
-    .map(e => {
-      const start = parseDbDate(e.started_at);
-      if (!start) return null;
-      const ongoing = !e.ended_at;
-      const end = ongoing ? now : parseDbDate(e.ended_at);
-      const minutes = e.duration_minutes ?? Math.round((end - start) / 60000);
-      return { id: e.id, status: e.status, start, end, minutes, ongoing };
-    })
-    .filter(Boolean);
-
-  const fmtHM = d => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
   function handlePreset(d) { setDays(d); setCustomRange(null); }
   function handleCustom(start, end) { setCustomRange({ start, end }); }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/entry?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDeleteTarget(null);
+        loadEntries();
+      }
+    } catch (e) {
+      console.error('Delete failed', e);
+    }
+  }
+
+  function handleSaved() {
+    setEditTarget(null);
+    loadEntries();
+  }
+
+  // Newest-first slice for the editable "Recent events" list (grid keeps full set).
+  const visibleEntries = entries.slice(0, visible);
+  const hasMore = visible < entries.length;
+  const remaining = entries.length - visible;
 
   return (
     <div style={{ '--c-on': '#10b981', '--c-off': '#f43f5e' }}>
@@ -222,34 +247,102 @@ export default function TimelineView() {
         </div>
       )}
 
-      {!loading && batches.length > 0 && (
-        <div className="glass-card mt-4 divide-y" style={{ borderColor: 'transparent' }}>
-          {batches.map((b, i) => (
-            <div
-              key={b.id ?? i}
-              className="flex items-center gap-3 px-3 py-2 text-xs"
-              style={i > 0 ? { borderTop: '1px solid var(--hairline)' } : undefined}
-            >
-              <span className={`badge ${b.status === 'on' ? 'badge-on' : 'badge-off'} shrink-0`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${b.status === 'on' ? 'dot-on' : 'dot-off'}`} />
-                {b.status === 'on' ? 'ON' : 'OFF'}
-              </span>
-              <span className="text-primary font-semibold font-mono shrink-0 w-16">
-                {formatDuration(b.minutes)}
-              </span>
-              <span className="text-muted font-mono">
-                {fmtHM(b.start)} – {b.ongoing ? 'now' : fmtHM(b.end)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="flex items-center gap-4 mt-4 text-xs text-muted">
         <span className="badge badge-on"><span className="w-2 h-2 rounded-full dot-on" />On</span>
         <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />Off</span>
         <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Unknown</span>
       </div>
+
+      {/* Recent events — the single editable list (replaces the old History tab). */}
+      {!loading && entries.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
+            Recent events
+          </h2>
+
+          <div className="max-h-[19rem] overflow-y-auto scrollbar-none space-y-2 pr-0.5">
+            {visibleEntries.map(e => (
+              <div key={e.id} className="glass-card flex items-center gap-3 px-3 py-2.5">
+                <span className={`badge ${e.status === 'on' ? 'badge-on' : 'badge-off'} shrink-0`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${e.status === 'on' ? 'dot-on' : 'dot-off'}`} />
+                  {e.status === 'on' ? 'ON' : 'OFF'}
+                </span>
+
+                <div className="flex-1 min-w-0">
+                  <div className="text-secondary text-xs font-mono truncate">
+                    {fmtTime(e.started_at, TIME_OPTS)}
+                  </div>
+                  {e.notes && (
+                    <div className="text-muted text-[11px] italic truncate">{e.notes}</div>
+                  )}
+                </div>
+
+                <div className="text-muted text-xs font-mono whitespace-nowrap shrink-0">
+                  {formatDuration(e.duration_minutes)}
+                </div>
+
+                <div className="flex items-center shrink-0">
+                  <button
+                    onClick={() => setEditTarget(e)}
+                    className="p-1.5 rounded-lg text-muted hover:text-primary hover:surface-sunken transition-colors"
+                    title="Edit"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(e)}
+                    className="p-1.5 rounded-lg text-muted hover:text-rose-500 transition-colors"
+                    title="Delete"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {(hasMore || visible > PAGE_INITIAL) && (
+            <div className="flex items-center justify-center gap-4 mt-3">
+              {hasMore && (
+                <button
+                  onClick={() => setVisible(v => v + PAGE_STEP)}
+                  className="text-xs font-medium text-muted hover:text-primary transition-colors"
+                >
+                  See more ({remaining})
+                </button>
+              )}
+              {visible > PAGE_INITIAL && (
+                <button
+                  onClick={() => setVisible(PAGE_INITIAL)}
+                  className="text-xs font-medium text-faint hover:text-secondary transition-colors"
+                >
+                  Show less
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Entry"
+        message={`Delete this ${deleteTarget?.status === 'on' ? 'Power On' : 'Power Off'} entry from ${deleteTarget ? fmtTime(deleteTarget.started_at, TIME_OPTS) : ''}? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <EditEntryModal
+        open={!!editTarget}
+        entry={editTarget}
+        onSaved={handleSaved}
+        onCancel={() => setEditTarget(null)}
+      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import QuickToggle from './components/QuickToggle';
 import TimelineView from './components/TimelineView';
-import HistoryList from './components/HistoryList';
 import AnalysisPanel from './components/AnalysisPanel';
 import LogForm from './components/LogForm';
 import EditEntryModal from './components/EditEntryModal';
@@ -11,7 +10,6 @@ import { useTheme } from './lib/theme';
 const TABS = [
   { key: 'toggle', label: 'Log' },
   { key: 'timeline', label: 'Timeline' },
-  { key: 'history', label: 'History' },
   { key: 'analysis', label: 'Analysis' },
 ];
 
@@ -78,7 +76,6 @@ export default function App() {
           </>
         )}
         {tab === 'timeline' && <TimelineView />}
-        {tab === 'history' && <HistoryList />}
         {tab === 'analysis' && <AnalysisPanel />}
       </main>
 
