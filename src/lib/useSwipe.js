@@ -8,7 +8,10 @@ import { useRef } from 'react';
 // they scroll that element instead of changing tabs.
 //
 // Returns props to spread onto the swipe surface: {onTouchStart,onTouchMove,onTouchEnd}.
-export function useSwipe(onSwipe, { threshold = 60, restraint = 40 } = {}) {
+// `threshold` = min horizontal travel (px). The gesture must also be horizontally
+// dominant (|dx| > |dy| * ratio) — a finger swipe always drifts vertically, so an
+// absolute vertical cap is too strict on real devices; a ratio is what feels natural.
+export function useSwipe(onSwipe, { threshold = 45, ratio = 1.3 } = {}) {
   const start = useRef(null);
 
   // Walk up from the touch target; if any ancestor (up to the surface) can scroll
@@ -28,7 +31,10 @@ export function useSwipe(onSwipe, { threshold = 60, restraint = 40 } = {}) {
   function onTouchStart(e) {
     if (e.touches.length !== 1) { start.current = null; return; }
     const t = e.touches[0];
-    if (startsInScrollable(t.target, e.currentTarget)) { start.current = null; return; }
+    // Resolve the element actually under the finger by coordinates — more reliable
+    // than e.target across event sources — then check if it (or an ancestor) scrolls.
+    const hit = document.elementFromPoint(t.clientX, t.clientY) || t.target;
+    if (startsInScrollable(hit, e.currentTarget)) { start.current = null; return; }
     start.current = { x: t.clientX, y: t.clientY };
   }
 
@@ -43,8 +49,8 @@ export function useSwipe(onSwipe, { threshold = 60, restraint = 40 } = {}) {
     const dx = t.clientX - start.current.x;
     const dy = t.clientY - start.current.y;
     start.current = null;
-    // Mostly-horizontal and far enough: left swipe = next, right swipe = prev.
-    if (Math.abs(dx) >= threshold && Math.abs(dy) <= restraint) {
+    // Far enough horizontally AND horizontally dominant -> left = next, right = prev.
+    if (Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * ratio) {
       onSwipe(dx < 0 ? 'left' : 'right');
     }
   }

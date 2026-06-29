@@ -63,7 +63,7 @@ export default function App() {
     : 'animate-fade-in';
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" {...swipeHandlers}>
       <header className="sticky top-0 z-20 glass border-x-0 border-t-0">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-3">
@@ -92,7 +92,6 @@ export default function App() {
 
       <main
         key={tab}
-        {...swipeHandlers}
         className={`max-w-lg mx-auto px-4 py-6 space-y-6 ${mainAnim}`}
       >
         {tab === 'toggle' && (
