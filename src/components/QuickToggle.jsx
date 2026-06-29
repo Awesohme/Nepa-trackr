@@ -37,32 +37,19 @@ export default function QuickToggle() {
 
   async function handleToggle() {
     setToggling(true);
+    // Single atomic call: the backend closes the open event (if any) and opens the new
+    // one in one transaction, so a failure can't orphan a closed event without a successor.
+    const newStatus = openEvent ? (openEvent.status === 'on' ? 'off' : 'on') : 'on';
     try {
-      if (openEvent) {
-        await fetch('/api/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'close' }),
-        });
-        const newStatus = openEvent.status === 'on' ? 'off' : 'on';
-        await fetch('/api/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'open', status: newStatus }),
-        });
-        const ev = { status: newStatus, started_at: new Date().toISOString() };
-        setOpenEvent(ev);
-        setLastEvent(ev);
-      } else {
-        await fetch('/api/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'open', status: 'on' }),
-        });
-        const ev = { status: 'on', started_at: new Date().toISOString() };
-        setOpenEvent(ev);
-        setLastEvent(ev);
-      }
+      const res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', status: newStatus }),
+      });
+      if (!res.ok) throw new Error(`toggle failed: ${res.status}`);
+      const ev = { status: newStatus, started_at: new Date().toISOString() };
+      setOpenEvent(ev);
+      setLastEvent(ev);
     } catch (e) {
       console.error('Toggle failed', e);
     } finally {

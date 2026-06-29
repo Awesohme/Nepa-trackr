@@ -33,7 +33,14 @@ export default function TimelineView() {
   const [visible, setVisible] = useState(PAGE_INITIAL);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const scrollRef = useRef(null);
+
+  // Tick every 30s so the latest (ongoing) entry's duration counts up live.
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const buildUrl = useCallback(() => {
     if (customRange) {
@@ -149,6 +156,19 @@ export default function TimelineView() {
     loadEntries();
   }
 
+  // Duration of an entry derived from the log itself: a period runs until the NEXT
+  // status change (the next-newer entry's start), regardless of any stored ended_at —
+  // which can drift (e.g. an orphaned close). entries are newest-first, so the next
+  // change for index i is entries[i-1]; the latest entry (i===0) is ongoing -> counts
+  // up to now. Falls back to the start-of-day at index boundaries gracefully.
+  function entryDurationMinutes(i) {
+    const start = parseDbDate(entries[i].started_at);
+    if (!start) return null;
+    const end = i === 0 ? nowTs : parseDbDate(entries[i - 1].started_at)?.getTime();
+    if (!end) return null;
+    return Math.max(0, Math.round((end - start) / 60000));
+  }
+
   // Newest-first slice for the editable "Recent events" list (grid keeps full set).
   const visibleEntries = entries.slice(0, visible);
   const hasMore = visible < entries.length;
@@ -261,7 +281,10 @@ export default function TimelineView() {
           </h2>
 
           <div className="max-h-[19rem] overflow-y-auto scrollbar-none space-y-2 pr-0.5">
-            {visibleEntries.map(e => (
+            {visibleEntries.map((e, i) => {
+              const ongoing = i === 0; // latest entry = current state, still running
+              const mins = entryDurationMinutes(i);
+              return (
               <div key={e.id} className="glass-card flex items-center gap-3 px-3 py-2.5">
                 <span className={`badge ${e.status === 'on' ? 'badge-on' : 'badge-off'} shrink-0`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${e.status === 'on' ? 'dot-on' : 'dot-off'}`} />
@@ -278,7 +301,11 @@ export default function TimelineView() {
                 </div>
 
                 <div className="text-muted text-xs font-mono whitespace-nowrap shrink-0">
-                  {formatDuration(e.duration_minutes)}
+                  {ongoing ? (
+                    <span className="text-secondary">{formatDuration(mins)} · now</span>
+                  ) : (
+                    formatDuration(mins)
+                  )}
                 </div>
 
                 <div className="flex items-center shrink-0">
@@ -302,7 +329,8 @@ export default function TimelineView() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {(hasMore || visible > PAGE_INITIAL) && (

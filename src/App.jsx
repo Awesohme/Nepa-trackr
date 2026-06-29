@@ -6,6 +6,7 @@ import LogForm from './components/LogForm';
 import EditEntryModal from './components/EditEntryModal';
 import UpdateBanner from './components/UpdateBanner';
 import { useTheme } from './lib/theme';
+import { useSwipe } from './lib/useSwipe';
 
 const TABS = [
   { key: 'toggle', label: 'Log' },
@@ -39,6 +40,27 @@ export default function App() {
   const [tab, setTab] = useState('toggle');
   const { theme, toggle } = useTheme();
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  // 'left' = moved forward (slide in from right), 'right' = moved back, '' = no swipe (fade).
+  const [swipeDir, setSwipeDir] = useState('');
+
+  function goToTab(key, dir = '') {
+    setSwipeDir(dir);
+    setTab(key);
+  }
+
+  // Swipe left -> next tab, swipe right -> prev tab. No wrap at the edges.
+  function handleSwipe(direction) {
+    const i = TABS.findIndex(t => t.key === tab);
+    const next = direction === 'left' ? i + 1 : i - 1;
+    if (next < 0 || next >= TABS.length) return;
+    goToTab(TABS[next].key, direction);
+  }
+  const swipeHandlers = useSwipe(handleSwipe);
+
+  const mainAnim =
+    swipeDir === 'left' ? 'animate-slide-left'
+    : swipeDir === 'right' ? 'animate-slide-right'
+    : 'animate-fade-in';
 
   return (
     <div className="min-h-screen">
@@ -57,7 +79,7 @@ export default function App() {
             {TABS.map(t => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
+                onClick={() => goToTab(t.key)}
                 data-active={tab === t.key}
                 className="segmented-item"
               >
@@ -68,7 +90,11 @@ export default function App() {
         </div>
       </header>
 
-      <main key={tab} className="max-w-lg mx-auto px-4 py-6 space-y-6 animate-fade-in">
+      <main
+        key={tab}
+        {...swipeHandlers}
+        className={`max-w-lg mx-auto px-4 py-6 space-y-6 ${mainAnim}`}
+      >
         {tab === 'toggle' && (
           <>
             <QuickToggle />
