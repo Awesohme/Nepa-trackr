@@ -29,10 +29,16 @@ export default function AnalysisPanel() {
     setError(null);
     try {
       const res = await fetch('/api/analyse', { method: 'POST' });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || `Analysis request failed (${res.status})`);
+      }
+      if (!data || typeof data !== 'object') {
+        throw new Error('Analysis returned an invalid response');
+      }
       setAnalysis(data);
     } catch (e) {
-      setError('Failed to run analysis. Check console.');
+      setError('Failed to run analysis. Please try again shortly.');
       console.error(e);
     } finally {
       setLoading(false);

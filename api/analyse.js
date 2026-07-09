@@ -8,6 +8,76 @@ const db = createClient({
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MIN_BAND_C_HOURS = 12;
+
+function eventMinutes(event) {
+  const stored = Number(event.duration_minutes);
+  if (Number.isFinite(stored) && stored >= 0) return stored;
+
+  const start = new Date(event.started_at).getTime();
+  const end = event.ended_at ? new Date(event.ended_at).getTime() : Date.now();
+  return Number.isFinite(start) && Number.isFinite(end)
+    ? Math.max(0, Math.round((end - start) / 60000))
+    : 0;
+}
+
+function localAnalysis(events) {
+  const datedEvents = events.filter(event => Number.isFinite(new Date(event.started_at).getTime()));
+  const onEvents = datedEvents.filter(event => event.status === 'on');
+  const offEvents = datedEvents.filter(event => event.status === 'off');
+  const totalOnMinutes = onEvents.reduce((sum, event) => sum + eventMinutes(event), 0);
+  const totalOffMinutes = offEvents.reduce((sum, event) => sum + eventMinutes(event), 0);
+  const timestamps = datedEvents.map(event => new Date(event.started_at).getTime());
+  const observedDays = Math.max(1, Math.ceil((Math.max(...timestamps) - Math.min(...timestamps)) / DAY_MS) || 1);
+  const averageDailyHours = Number((totalOnMinutes / 60 / observedDays).toFixed(1));
+  const entitlementGapHours = Number(Math.max(0, MIN_BAND_C_HOURS - averageDailyHours).toFixed(1));
+
+  const supplyByWeekday = new Map();
+  onEvents.forEach(event => {
+    const day = new Date(event.started_at).toLocaleDateString('en-US', {
+      weekday: 'long', timeZone: 'Africa/Lagos',
+    });
+    supplyByWeekday.set(day, (supplyByWeekday.get(day) || 0) + eventMinutes(event));
+  });
+  const rankedDays = [...supplyByWeekday.entries()].sort((a, b) => a[1] - b[1]);
+
+  const outageHours = new Map();
+  offEvents.forEach(event => {
+    const hour = new Date(event.started_at).toLocaleTimeString('en-GB', {
+      hour: '2-digit', hour12: false, timeZone: 'Africa/Lagos',
+    });
+    outageHours.set(hour, (outageHours.get(hour) || 0) + 1);
+  });
+  const peakHour = [...outageHours.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const briefRestorations = onEvents.filter(event => eventMinutes(event) > 0 && eventMinutes(event) < 60);
+  const longOutages = offEvents.filter(event => eventMinutes(event) >= MIN_BAND_C_HOURS * 60);
+  const anomalies = [];
+  if (briefRestorations.length) anomalies.push(`${briefRestorations.length} supply period${briefRestorations.length === 1 ? '' : 's'} lasted under one hour.`);
+  if (longOutages.length) anomalies.push(`${longOutages.length} outage${longOutages.length === 1 ? '' : 's'} lasted 12 hours or more.`);
+  if (!anomalies.length) anomalies.push('No unusually short supply periods or 12-hour outages were found in the recorded data.');
+
+  const averageOffHours = Number((totalOffMinutes / 60 / observedDays).toFixed(1));
+  return {
+    summary: 'Gemini is temporarily unavailable because its API quota has been reached. These results were calculated directly from your recorded power data.',
+    headline: `Recorded supply averages ${averageDailyHours} hours per day across the observed period.`,
+    average_daily_hours: averageDailyHours,
+    entitlement_gap_hours: entitlementGapHours,
+    worst_day_of_week: rankedDays[0]?.[0] || 'Not enough data',
+    best_day_of_week: rankedDays.at(-1)?.[0] || 'Not enough data',
+    likely_pattern: `The log shows an average of ${averageDailyHours}h of supply and ${averageOffHours}h of outage time per observed day.`,
+    peak_outage_hours: peakHour ? `${peakHour}:00–${peakHour}:59` : 'Not enough data',
+    anomalies,
+    letter_talking_points: [
+      `Recorded electricity supply averaged ${averageDailyHours} hours per day over ${observedDays} observed day${observedDays === 1 ? '' : 's'}.`,
+      entitlementGapHours > 0
+        ? `This is ${entitlementGapHours} hours below the 12-hour daily minimum expected for Band C customers.`
+        : 'The recorded average meets the 12-hour Band C minimum, but individual outages should still be reviewed.',
+      peakHour ? `Outages most often began during the ${peakHour}:00 hour.` : 'The log does not yet show a consistent outage start time.',
+    ],
+    recommendation: 'Continue logging every status change and include this exported summary with any complaint to IKEDC or NERC.',
+  };
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -65,15 +135,14 @@ Respond ONLY with a valid JSON object, no markdown, no backticks, no preamble. U
 }
 `;
 
-  const geminiResult = await model.generateContent(prompt);
-  const raw = geminiResult.response.text().trim();
-
-  const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-
   try {
+    const geminiResult = await model.generateContent(prompt);
+    const raw = geminiResult.response.text().trim();
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
     const parsed = JSON.parse(cleaned);
     return res.status(200).json(parsed);
-  } catch {
-    return res.status(200).json({ raw: cleaned });
+  } catch (error) {
+    console.error('Gemini analysis unavailable; using local analysis.', error.message);
+    return res.status(200).json(localAnalysis(events));
   }
 }
