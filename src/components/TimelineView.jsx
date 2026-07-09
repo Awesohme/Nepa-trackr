@@ -13,6 +13,8 @@ const TIME_OPTS = {
 
 const PAGE_INITIAL = 5;
 const PAGE_STEP = 10;
+const HOUR_MS = 60 * 60 * 1000;
+const MIN_BRIEF_STRIP_PERCENT = 12;
 
 // Short label for a run's length in whole hours, e.g. 6 -> "6h".
 function shortHours(h) {
@@ -113,6 +115,40 @@ export default function TimelineView() {
       return eventStart && eventStart <= endOfHour;
     });
     return prior ? prior.status : null;
+  }
+
+  // A brief power restoration can otherwise make a whole hour look "on". Keep the
+  // hour's normal background, but expose each partial on-period as a small green
+  // strip positioned where it happened within that hour.
+  function getBriefOnSegmentsForHour(date, hour) {
+    const hourStart = new Date(date);
+    hourStart.setHours(hour, 0, 0, 0);
+    const startMs = hourStart.getTime();
+    const endMs = startMs + HOUR_MS;
+
+    return entries.flatMap(entry => {
+      if (entry.status !== 'on') return [];
+      const eventStart = parseDbDate(entry.started_at)?.getTime();
+      const eventEnd = entry.ended_at
+        ? parseDbDate(entry.ended_at)?.getTime()
+        : nowTs;
+      if (!eventStart || !eventEnd || eventStart >= endMs || eventEnd <= startMs) return [];
+
+      const clippedStart = Math.max(eventStart, startMs);
+      const clippedEnd = Math.min(eventEnd, endMs);
+      const actualWidth = ((clippedEnd - clippedStart) / HOUR_MS) * 100;
+      if (actualWidth >= 100) return [];
+
+      // Tiny intervals need a minimum visual width to remain noticeable on mobile.
+      const rawLeft = ((clippedStart - startMs) / HOUR_MS) * 100;
+      const left = Math.min(rawLeft, 100 - MIN_BRIEF_STRIP_PERCENT);
+      const width = Math.min(
+        100 - left,
+        Math.max(actualWidth, MIN_BRIEF_STRIP_PERCENT),
+      );
+
+      return [{ left, width }];
+    });
   }
 
   const isToday = d => d.toDateString() === today.toDateString();
@@ -231,19 +267,36 @@ export default function TimelineView() {
                     {HOURS.map(hour => {
                       const status = getStatusForHour(date, hour);
                       const color = cellColor(status);
+                      const briefOnSegments = getBriefOnSegmentsForHour(date, hour);
+                      const hasBriefPower = briefOnSegments.length > 0;
                       const isNowCell = todayRow && hour === currentHour;
                       return (
                         <div
                           key={hour}
-                          title={`${date.toLocaleDateString()} ${String(hour).padStart(2, '0')}:00 — ${status === 'future' ? '—' : status || 'unknown'}`}
-                          className="flex-1 h-5 rounded-[3px] transition-transform hover:scale-y-110"
+                          title={`${date.toLocaleDateString()} ${String(hour).padStart(2, '0')}:00 — ${hasBriefPower ? 'brief power restoration' : status === 'future' ? '—' : status || 'unknown'}`}
+                          className="relative flex-1 h-5 overflow-hidden rounded-[3px] transition-transform hover:scale-y-110"
                           style={{
-                            background: color || 'var(--surface-sunken)',
+                            // A short on-period is drawn as a strip rather than filling the cell.
+                            background: hasBriefPower && status === 'on'
+                              ? 'var(--surface-sunken)'
+                              : color || 'var(--surface-sunken)',
                             opacity: status === 'future' ? 0.35 : 1,
                             outline: isNowCell ? '1.5px solid var(--accent)' : 'none',
                             outlineOffset: isNowCell ? '1px' : '0',
                           }}
-                        />
+                        >
+                          {briefOnSegments.map((segment, index) => (
+                            <span
+                              key={index}
+                              className="absolute bottom-[3px] h-[3px] rounded-full"
+                              style={{
+                                left: `${segment.left}%`,
+                                width: `${segment.width}%`,
+                                background: 'var(--c-on)',
+                              }}
+                            />
+                          ))}
+                        </div>
                       );
                     })}
                     {runs.filter(r => r.hours >= 2).map(r => (
