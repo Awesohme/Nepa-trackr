@@ -1,15 +1,42 @@
 import { createClient } from '@libsql/client';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_BAND_C_HOURS = 12;
+
+async function runOpenRouterAnalysis(prompt) {
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OpenRouter API key is not configured');
+  }
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost',
+      'X-Title': 'NEPA Trackr',
+    },
+    body: JSON.stringify({
+      model: 'openrouter/free',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter request failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('OpenRouter returned no analysis content');
+  return content.trim();
+}
 
 function eventMinutes(event) {
   const stored = Number(event.duration_minutes);
@@ -59,7 +86,7 @@ function localAnalysis(events) {
 
   const averageOffHours = Number((totalOffMinutes / 60 / observedDays).toFixed(1));
   return {
-    summary: 'Gemini is temporarily unavailable because its API quota has been reached. These results were calculated directly from your recorded power data.',
+    summary: 'The AI service is temporarily unavailable, so these results were calculated directly from your recorded power data.',
     headline: `Recorded supply averages ${averageDailyHours} hours per day across the observed period.`,
     average_daily_hours: averageDailyHours,
     entitlement_gap_hours: entitlementGapHours,
@@ -136,13 +163,12 @@ Respond ONLY with a valid JSON object, no markdown, no backticks, no preamble. U
 `;
 
   try {
-    const geminiResult = await model.generateContent(prompt);
-    const raw = geminiResult.response.text().trim();
+    const raw = await runOpenRouterAnalysis(prompt);
     const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
     const parsed = JSON.parse(cleaned);
     return res.status(200).json(parsed);
   } catch (error) {
-    console.error('Gemini analysis unavailable; using local analysis.', error.message);
+    console.error('AI analysis unavailable; using local analysis.', error.message);
     return res.status(200).json(localAnalysis(events));
   }
 }

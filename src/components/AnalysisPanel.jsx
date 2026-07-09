@@ -120,7 +120,7 @@ export default function AnalysisPanel() {
 
       {!analysis && !loading && !error && (
         <div className="glass-card text-muted text-sm text-center py-10">
-          Tap “Run Analysis” to get Gemini's take on your power data.
+          Tap “Run Analysis” to get an AI-powered view of your power data.
         </div>
       )}
     </div>
