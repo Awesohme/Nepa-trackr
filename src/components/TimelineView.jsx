@@ -14,7 +14,6 @@ const TIME_OPTS = {
 const PAGE_INITIAL = 5;
 const PAGE_STEP = 10;
 const HOUR_MS = 60 * 60 * 1000;
-const MIN_BRIEF_STRIP_PERCENT = 12;
 
 // Short label for a run's length in whole hours, e.g. 6 -> "6h".
 function shortHours(h) {
@@ -118,8 +117,8 @@ export default function TimelineView() {
   }
 
   // A brief power restoration can otherwise make a whole hour look "on". Keep the
-  // hour's normal background, but expose each partial on-period as a small green
-  // strip positioned where it happened within that hour.
+  // hour's normal background, but expose each partial on-period as a small vertical
+  // green marker positioned at its midpoint within that hour.
   function getBriefOnSegmentsForHour(date, hour) {
     const hourStart = new Date(date);
     hourStart.setHours(hour, 0, 0, 0);
@@ -139,15 +138,11 @@ export default function TimelineView() {
       const actualWidth = ((clippedEnd - clippedStart) / HOUR_MS) * 100;
       if (actualWidth >= 100) return [];
 
-      // Tiny intervals need a minimum visual width to remain noticeable on mobile.
-      const rawLeft = ((clippedStart - startMs) / HOUR_MS) * 100;
-      const left = Math.min(rawLeft, 100 - MIN_BRIEF_STRIP_PERCENT);
-      const width = Math.min(
-        100 - left,
-        Math.max(actualWidth, MIN_BRIEF_STRIP_PERCENT),
-      );
+      // Keep the marker fully inside even when a restoration occurs close to an edge.
+      const rawPosition = (((clippedStart + clippedEnd) / 2 - startMs) / HOUR_MS) * 100;
+      const position = Math.min(94, Math.max(6, rawPosition));
 
-      return [{ left, width }];
+      return [{ position }];
     });
   }
 
@@ -288,10 +283,9 @@ export default function TimelineView() {
                           {briefOnSegments.map((segment, index) => (
                             <span
                               key={index}
-                              className="absolute bottom-[3px] h-[3px] rounded-full"
+                              className="absolute inset-y-[3px] w-[3px] rounded-full"
                               style={{
-                                left: `${segment.left}%`,
-                                width: `${segment.width}%`,
+                                left: `calc(${segment.position}% - 1.5px)`,
                                 background: 'var(--c-on)',
                               }}
                             />
