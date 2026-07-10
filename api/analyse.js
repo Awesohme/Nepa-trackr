@@ -38,6 +38,32 @@ async function runOpenRouterAnalysis(prompt) {
   return content.trim();
 }
 
+function parseAnalysisResponse(raw) {
+  const withoutFences = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  const start = withoutFences.indexOf('{');
+  const end = withoutFences.lastIndexOf('}');
+  const json = start >= 0 && end > start
+    ? withoutFences.slice(start, end + 1)
+    : withoutFences;
+
+  try {
+    return JSON.parse(json);
+  } catch {
+    // Some free models occasionally omit quotes around one or more JSON keys.
+    // Repair only those predictable formatting errors before giving up to the
+    // deterministic local analysis fallback.
+    const repaired = json
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/([{,]\s*)([A-Za-z_$][\w$-]*)(\s*:)/g, '$1"$2"$3')
+      .replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(repaired);
+  }
+}
+
 function eventMinutes(event) {
   const stored = Number(event.duration_minutes);
   if (Number.isFinite(stored) && stored >= 0) return stored;
@@ -164,8 +190,7 @@ Respond ONLY with a valid JSON object, no markdown, no backticks, no preamble. U
 
   try {
     const raw = await runOpenRouterAnalysis(prompt);
-    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseAnalysisResponse(raw);
     return res.status(200).json(parsed);
   } catch (error) {
     console.error('AI analysis unavailable; using local analysis.', error.message);
