@@ -1,10 +1,33 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const watchedRegistrations = new WeakSet();
+
+function watchForUpdates(registration) {
+  if (!registration || watchedRegistrations.has(registration)) return;
+  watchedRegistrations.add(registration);
+
+  const checkForUpdate = () => {
+    if (document.visibilityState === 'visible') {
+      registration.update().catch(() => {});
+    }
+  };
+
+  // Check right away, on return to the app, and every five minutes while open.
+  checkForUpdate();
+  window.addEventListener('focus', checkForUpdate);
+  document.addEventListener('visibilitychange', checkForUpdate);
+  window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
+}
+
 export default function UpdateBanner() {
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({
+    immediate: true,
+    onRegisteredSW: (_swScriptUrl, registration) => watchForUpdates(registration),
+  });
 
   if (!needRefresh) return null;
 
