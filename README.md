@@ -10,6 +10,7 @@ Power data logging for Igbe Road, Ikorodu. Records IKEDC supply events, visualis
 - **Timeline View** — 24-hour colour-coded grid (amber = on, red = off)
 - **History** — scrollable event log with edit & delete
 - **Analysis** — AI-powered pattern detection and letter talking points
+- **Analysis history** — records each run's WAT timestamp, model/provider, data scope, and outcome
 - **PWA** — installable on your phone's home screen
 
 ## Project Structure

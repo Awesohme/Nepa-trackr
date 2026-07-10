@@ -38,7 +38,9 @@ async function runOpenRouterAnalysis(prompt) {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
-      if (typeof content === 'string' && content.trim()) return content.trim();
+      if (typeof content === 'string' && content.trim()) {
+        return { content: content.trim(), model: data.model || 'openrouter/free' };
+      }
       throw new Error('OpenRouter returned no analysis content');
     } catch (error) {
       lastError = error;
@@ -142,6 +144,40 @@ function localAnalysis(events) {
   };
 }
 
+async function recordAnalysis({ model, provider, eventCount, resultType, summary }) {
+  await db.batch([
+    {
+      sql: `CREATE TABLE IF NOT EXISTS analysis_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        analysed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        model TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        data_window_days INTEGER NOT NULL,
+        event_count INTEGER NOT NULL,
+        result_type TEXT NOT NULL,
+        analysis_summary TEXT
+      )`,
+      args: [],
+    },
+    {
+      sql: `INSERT INTO analysis_runs
+            (model, provider, data_window_days, event_count, result_type, analysis_summary)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [model, provider, 30, eventCount, resultType, summary || null],
+    },
+  ], 'write');
+}
+
+async function finishAnalysis(res, payload, logDetails) {
+  try {
+    await recordAnalysis({ ...logDetails, summary: payload.summary || payload.headline });
+  } catch (error) {
+    // The analysis itself remains available if its audit record cannot be saved.
+    console.error('Analysis log could not be saved.', error.message);
+  }
+  return res.status(200).json(payload);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -154,8 +190,13 @@ export default async function handler(req, res) {
 
   const events = result.rows;
   if (events.length < 5) {
-    return res.status(200).json({
+    return finishAnalysis(res, {
       summary: 'Not enough data yet. Log at least a week of events before running analysis.'
+    }, {
+      model: 'No model used',
+      provider: 'NEPA Trackr',
+      eventCount: events.length,
+      resultType: 'insufficient-data',
     });
   }
 
@@ -199,11 +240,22 @@ Respond ONLY with a valid JSON object, no markdown, no backticks, no preamble. U
 `;
 
   try {
-    const raw = await runOpenRouterAnalysis(prompt);
-    const parsed = parseAnalysisResponse(raw);
-    return res.status(200).json(parsed);
+    const { content, model } = await runOpenRouterAnalysis(prompt);
+    const parsed = parseAnalysisResponse(content);
+    return finishAnalysis(res, parsed, {
+      model,
+      provider: 'OpenRouter',
+      eventCount: events.length,
+      resultType: 'ai',
+    });
   } catch (error) {
     console.error('AI analysis unavailable; using local analysis.', error.message);
-    return res.status(200).json(localAnalysis(events));
+    const fallback = localAnalysis(events);
+    return finishAnalysis(res, fallback, {
+      model: 'Deterministic local analysis',
+      provider: 'NEPA Trackr',
+      eventCount: events.length,
+      resultType: 'fallback',
+    });
   }
 }

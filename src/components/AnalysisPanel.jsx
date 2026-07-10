@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function StatCard({ label, value, danger }) {
   return (
@@ -23,6 +23,19 @@ export default function AnalysisPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/analysis-log');
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) setHistory(data);
+    } catch {
+      // History is supplementary; never prevent a new analysis from running.
+    }
+  }
+
+  useEffect(() => { loadHistory(); }, []);
 
   async function runAnalysis() {
     setLoading(true);
@@ -37,6 +50,7 @@ export default function AnalysisPanel() {
         throw new Error('Analysis returned an invalid response');
       }
       setAnalysis(data);
+      loadHistory();
     } catch (e) {
       setError('Failed to run analysis. Please try again shortly.');
       console.error(e);
@@ -123,6 +137,34 @@ export default function AnalysisPanel() {
           Tap “Run Analysis” to get an AI-powered view of your power data.
         </div>
       )}
+
+      <section className="pt-6 mt-6 border-t" style={{ borderColor: 'var(--border)' }}>
+        <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Analysis history</h3>
+        {history.length ? (
+          <div className="space-y-2">
+            {history.map(run => (
+              <div key={run.id} className="glass-card px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-primary">{run.model}</p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {new Date(run.analysed_at).toLocaleString('en-GB', {
+                        dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Lagos',
+                      })} WAT
+                    </p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider text-muted">{run.result_type}</span>
+                </div>
+                <p className="text-xs text-secondary mt-2">
+                  {run.provider} · Last {run.data_window_days} days · {run.event_count} event{run.event_count === 1 ? '' : 's'} analysed
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="glass-card px-4 py-5 text-sm text-muted text-center">No analyses have been recorded yet.</p>
+        )}
+      </section>
     </div>
   );
 }
