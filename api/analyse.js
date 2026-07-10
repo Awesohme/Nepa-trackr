@@ -13,29 +13,39 @@ async function runOpenRouterAnalysis(prompt) {
     throw new Error('OpenRouter API key is not configured');
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost',
-      'X-Title': 'NEPA Trackr',
-    },
-    body: JSON.stringify({
-      model: 'openrouter/free',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-    }),
-  });
+  let lastError;
+  // The free router picks from several providers. A provider can occasionally
+  // return an empty completion, so try another eligible free model before
+  // falling back to the deterministic report.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost',
+          'X-Title': 'NEPA Trackr',
+        },
+        body: JSON.stringify({
+          model: 'openrouter/free',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+        }),
+      });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter request failed (${response.status})`);
+      if (!response.ok) throw new Error(`OpenRouter request failed (${response.status})`);
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (typeof content === 'string' && content.trim()) return content.trim();
+      throw new Error('OpenRouter returned no analysis content');
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error('OpenRouter returned no analysis content');
-  return content.trim();
+  throw lastError;
 }
 
 function parseAnalysisResponse(raw) {
