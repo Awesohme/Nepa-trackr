@@ -144,33 +144,42 @@ function localAnalysis(events) {
   };
 }
 
-async function recordAnalysis({ model, provider, eventCount, resultType, summary }) {
-  await db.batch([
-    {
-      sql: `CREATE TABLE IF NOT EXISTS analysis_runs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        analysed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-        model TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        data_window_days INTEGER NOT NULL,
-        event_count INTEGER NOT NULL,
-        result_type TEXT NOT NULL,
-        analysis_summary TEXT
-      )`,
-      args: [],
-    },
-    {
-      sql: `INSERT INTO analysis_runs
-            (model, provider, data_window_days, event_count, result_type, analysis_summary)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [model, provider, 30, eventCount, resultType, summary || null],
-    },
-  ], 'write');
+async function recordAnalysis({ model, provider, eventCount, resultType, summary, content }) {
+  await db.execute(`CREATE TABLE IF NOT EXISTS analysis_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    analysed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    model TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    data_window_days INTEGER NOT NULL,
+    event_count INTEGER NOT NULL,
+    result_type TEXT NOT NULL,
+    analysis_summary TEXT,
+    analysis_content TEXT
+  )`);
+
+  // Existing installations created the original metadata-only table. Preserve
+  // those rows while adding the full result column for subsequent analyses.
+  try {
+    await db.execute('ALTER TABLE analysis_runs ADD COLUMN analysis_content TEXT');
+  } catch (error) {
+    if (!/duplicate column name/i.test(error.message)) throw error;
+  }
+
+  await db.execute({
+    sql: `INSERT INTO analysis_runs
+          (model, provider, data_window_days, event_count, result_type, analysis_summary, analysis_content)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [model, provider, 30, eventCount, resultType, summary || null, JSON.stringify(content)],
+  });
 }
 
 async function finishAnalysis(res, payload, logDetails) {
   try {
-    await recordAnalysis({ ...logDetails, summary: payload.summary || payload.headline });
+    await recordAnalysis({
+      ...logDetails,
+      summary: payload.summary || payload.headline,
+      content: payload,
+    });
   } catch (error) {
     // The analysis itself remains available if its audit record cannot be saved.
     console.error('Analysis log could not be saved.', error.message);

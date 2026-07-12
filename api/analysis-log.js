@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   try {
     const result = await db.execute(`SELECT id, analysed_at, model, provider,
-      data_window_days, event_count, result_type, analysis_summary
+      data_window_days, event_count, result_type, analysis_summary, analysis_content
       FROM analysis_runs
       ORDER BY analysed_at DESC
       LIMIT 20`);
