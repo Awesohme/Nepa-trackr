@@ -76,6 +76,14 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               >
                 No Power
               </button>
+              <button
+                type="button"
+                onClick={() => setStatus('unknown')}
+                data-active={status === 'unknown'}
+                className="segmented-item"
+              >
+                Unknown
+              </button>
             </div>
 
             <div>
@@ -91,12 +99,13 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
 
             <div>
               <label className="block text-xs text-muted mb-1.5">
-                End time <span className="text-faint">(leave blank if ongoing)</span>
+                End time <span className="text-faint">{status === 'unknown' ? '(required for Unknown)' : '(leave blank if ongoing)'}</span>
               </label>
               <input
                 type="datetime-local"
                 value={endedAt}
                 onChange={e => setEndedAt(e.target.value)}
+                required={status === 'unknown'}
                 className="field"
               />
             </div>

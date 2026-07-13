@@ -23,7 +23,14 @@ function shortHours(h) {
 function cellColor(status) {
   if (status === 'on') return 'var(--c-on)';
   if (status === 'off') return 'var(--c-off)';
+  if (status === 'unknown') return 'var(--c-unknown)';
   return null;
+}
+
+function statusLabel(status) {
+  if (status === 'on') return 'ON';
+  if (status === 'off') return 'NO POWER';
+  return 'UNKNOWN';
 }
 
 export default function TimelineView() {
@@ -90,8 +97,8 @@ export default function TimelineView() {
   //  - Otherwise carry the most recent prior event's status forward to `now`, so a gap after
   //    a closed event (e.g. a stray close) still reads as the last known state up to now,
   //    instead of a grey "unknown" hole.
-  //  - Hours before the very first event are treated as no power. This fills
-  //    historical gaps without making an assumption about future hours.
+  //  - Hours before the first event remain explicitly unknown; the app never
+  //    assumes a power failure from missing history.
   function getStatusForHour(date, hour) {
     const startOfHour = new Date(date);
     startOfHour.setHours(hour, 0, 0, 0);
@@ -114,7 +121,7 @@ export default function TimelineView() {
       const eventStart = parseDbDate(e.started_at);
       return eventStart && eventStart <= endOfHour;
     });
-    return prior ? prior.status : 'off';
+    return prior ? prior.status : 'unknown';
   }
 
   // A brief power restoration can otherwise make a whole hour look "on". Keep the
@@ -207,7 +214,7 @@ export default function TimelineView() {
   const remaining = entries.length - visible;
 
   return (
-    <div style={{ '--c-on': '#10b981', '--c-off': '#f43f5e' }}>
+    <div style={{ '--c-on': '#10b981', '--c-off': '#f43f5e', '--c-unknown': '#52525b' }}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Timeline</h2>
         <span className="text-[11px] text-faint font-mono">
@@ -318,6 +325,7 @@ export default function TimelineView() {
       <div className="flex items-center gap-4 mt-4 text-xs text-muted">
         <span className="badge badge-on"><span className="w-2 h-2 rounded-full dot-on" />On</span>
         <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />No Power</span>
+        <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: '#71717a' }} />Unknown</span>
         <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Future</span>
       </div>
 
@@ -334,9 +342,12 @@ export default function TimelineView() {
               const mins = entryDurationMinutes(i);
               return (
               <div key={e.id} className="glass-card flex items-center gap-3 px-3 py-2.5">
-                <span className={`badge ${e.status === 'on' ? 'badge-on' : 'badge-off'} shrink-0`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${e.status === 'on' ? 'dot-on' : 'dot-off'}`} />
-                  {e.status === 'on' ? 'ON' : 'NO POWER'}
+                <span className={`badge ${e.status === 'on' ? 'badge-on' : e.status === 'off' ? 'badge-off' : 'badge-unknown'} shrink-0`}>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${e.status === 'on' ? 'dot-on' : e.status === 'off' ? 'dot-off' : ''}`}
+                    style={e.status === 'unknown' ? { background: '#71717a' } : undefined}
+                  />
+                  {statusLabel(e.status)}
                 </span>
 
                 <div className="flex-1 min-w-0">
@@ -407,7 +418,7 @@ export default function TimelineView() {
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete Entry"
-        message={`Delete this ${deleteTarget?.status === 'on' ? 'Power On' : 'No Power'} entry from ${deleteTarget ? fmtTime(deleteTarget.started_at, TIME_OPTS) : ''}? This cannot be undone.`}
+        message={`Delete this ${deleteTarget?.status === 'on' ? 'Power On' : deleteTarget?.status === 'off' ? 'No Power' : 'Unknown'} entry from ${deleteTarget ? fmtTime(deleteTarget.started_at, TIME_OPTS) : ''}? This cannot be undone.`}
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

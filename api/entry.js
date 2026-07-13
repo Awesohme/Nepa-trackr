@@ -12,11 +12,14 @@ export default async function handler(req, res) {
     const { started_at, ended_at, status, notes } = req.body;
     const start = new Date(started_at);
     const end = ended_at ? new Date(ended_at) : null;
-    if (!started_at || !['on', 'off'].includes(status) || Number.isNaN(start.getTime())) {
+    if (!started_at || !['on', 'off', 'unknown'].includes(status) || Number.isNaN(start.getTime())) {
       return res.status(400).json({ error: 'Missing started_at or status' });
     }
     if (end && (Number.isNaN(end.getTime()) || end < start)) {
       return res.status(400).json({ error: 'End time must be after the start time' });
+    }
+    if (status === 'unknown' && !ended_at) {
+      return res.status(400).json({ error: 'Unknown entries require an end time' });
     }
 
     const duration_minutes = started_at && ended_at
@@ -74,6 +77,12 @@ export default async function handler(req, res) {
   if (method === 'PUT') {
     const { id, started_at, ended_at, status, notes } = req.body;
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    if (!started_at || !['on', 'off', 'unknown'].includes(status)) {
+      return res.status(400).json({ error: 'Missing started_at or status' });
+    }
+    if (status === 'unknown' && !ended_at) {
+      return res.status(400).json({ error: 'Unknown entries require an end time' });
+    }
 
     const duration_minutes = started_at && ended_at
       ? Math.round((new Date(ended_at) - new Date(started_at)) / 60000)
