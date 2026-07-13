@@ -74,7 +74,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
                 className="segmented-item"
                 style={status === 'off' ? { color: '#e11d48' } : undefined}
               >
-                Power Off
+                No Power
               </button>
             </div>
 

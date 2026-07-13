@@ -86,7 +86,7 @@ export default function QuickToggle() {
         ) : (
           <span className="flex flex-col items-center gap-2">
             <span className="text-6xl drop-shadow">{isOn ? '⚡' : '🔴'}</span>
-            <span className="text-2xl tracking-tight">{isOn ? 'POWER IS ON' : 'POWER IS OFF'}</span>
+            <span className="text-2xl tracking-tight">{isOn ? 'POWER IS ON' : 'NO POWER'}</span>
             {openEvent && (
               <span className="text-sm font-semibold opacity-90 font-mono">{elapsed}</span>
             )}
@@ -100,8 +100,8 @@ export default function QuickToggle() {
       {lastEvent && (
         <div className="text-xs text-muted font-mono text-center">
           {openEvent
-            ? `${isOn ? 'On' : 'Off'} since ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
-            : `Last logged ${lastEvent.status === 'on' ? 'On' : 'Off'} · ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+            ? `${isOn ? 'Power On' : 'No Power'} since ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+            : `Last logged ${lastEvent.status === 'on' ? 'Power On' : 'No Power'} · ${parseDbDate(lastEvent.started_at)?.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
         </div>
       )}
     </div>

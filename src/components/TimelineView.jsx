@@ -45,9 +45,9 @@ export default function TimelineView() {
 
   const buildUrl = useCallback(() => {
     if (customRange) {
-      return `/api/entries?start=${encodeURIComponent(customRange.start)}&end=${encodeURIComponent(customRange.end)}`;
+      return `/api/entries?start=${encodeURIComponent(customRange.start)}&end=${encodeURIComponent(customRange.end)}&baseline=1`;
     }
-    return `/api/entries?days=${days}`;
+    return `/api/entries?days=${days}&baseline=1`;
   }, [days, customRange]);
 
   const loadEntries = useCallback(() => {
@@ -316,7 +316,7 @@ export default function TimelineView() {
 
       <div className="flex items-center gap-4 mt-4 text-xs text-muted">
         <span className="badge badge-on"><span className="w-2 h-2 rounded-full dot-on" />On</span>
-        <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />Off</span>
+        <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />No Power</span>
         <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Unknown</span>
       </div>
 
@@ -335,7 +335,7 @@ export default function TimelineView() {
               <div key={e.id} className="glass-card flex items-center gap-3 px-3 py-2.5">
                 <span className={`badge ${e.status === 'on' ? 'badge-on' : 'badge-off'} shrink-0`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${e.status === 'on' ? 'dot-on' : 'dot-off'}`} />
-                  {e.status === 'on' ? 'ON' : 'OFF'}
+                  {e.status === 'on' ? 'ON' : 'NO POWER'}
                 </span>
 
                 <div className="flex-1 min-w-0">
@@ -406,7 +406,7 @@ export default function TimelineView() {
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete Entry"
-        message={`Delete this ${deleteTarget?.status === 'on' ? 'Power On' : 'Power Off'} entry from ${deleteTarget ? fmtTime(deleteTarget.started_at, TIME_OPTS) : ''}? This cannot be undone.`}
+        message={`Delete this ${deleteTarget?.status === 'on' ? 'Power On' : 'No Power'} entry from ${deleteTarget ? fmtTime(deleteTarget.started_at, TIME_OPTS) : ''}? This cannot be undone.`}
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
