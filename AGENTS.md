@@ -17,6 +17,7 @@
 - Make the smallest change that fulfills the request.
 - Run the relevant checks before handing work off.
 - Stage and commit only files within the requested scope.
+- After a requested change has passed its checks, commit and push it directly to `main`.
 
 ## NEPA Trackr specifics
 

@@ -272,16 +272,16 @@ export default function TimelineView() {
                           title={`${date.toLocaleDateString()} ${String(hour).padStart(2, '0')}:00 — ${hasBriefPower ? 'brief power restoration' : status === 'future' ? '—' : status || 'unknown'}`}
                           className="relative flex-1 h-5 overflow-hidden rounded-[3px] transition-transform hover:scale-y-110"
                           style={{
-                            // A short on-period is drawn as a strip rather than filling the cell.
-                            background: hasBriefPower && status === 'on'
-                              ? 'var(--surface-sunken)'
-                              : color || 'var(--surface-sunken)',
+                            // Historical cells always use the legend colours. A brief
+                            // restoration still turns its hour green; markers remain on
+                            // red cells to show a short return during an outage.
+                            background: color || 'var(--surface-sunken)',
                             opacity: status === 'future' ? 0.35 : 1,
                             outline: isNowCell ? '1.5px solid var(--accent)' : 'none',
                             outlineOffset: isNowCell ? '1px' : '0',
                           }}
                         >
-                          {briefOnSegments.map((segment, index) => (
+                          {status !== 'on' && briefOnSegments.map((segment, index) => (
                             <span
                               key={index}
                               className="absolute inset-y-[3px] w-[3px] rounded-full"
