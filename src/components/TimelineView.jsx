@@ -90,7 +90,8 @@ export default function TimelineView() {
   //  - Otherwise carry the most recent prior event's status forward to `now`, so a gap after
   //    a closed event (e.g. a stray close) still reads as the last known state up to now,
   //    instead of a grey "unknown" hole.
-  //  - Hours before the very first event remain unknown (null).
+  //  - Hours before the very first event are treated as no power. This fills
+  //    historical gaps without making an assumption about future hours.
   function getStatusForHour(date, hour) {
     const startOfHour = new Date(date);
     startOfHour.setHours(hour, 0, 0, 0);
@@ -113,7 +114,7 @@ export default function TimelineView() {
       const eventStart = parseDbDate(e.started_at);
       return eventStart && eventStart <= endOfHour;
     });
-    return prior ? prior.status : null;
+    return prior ? prior.status : 'off';
   }
 
   // A brief power restoration can otherwise make a whole hour look "on". Keep the
@@ -317,7 +318,7 @@ export default function TimelineView() {
       <div className="flex items-center gap-4 mt-4 text-xs text-muted">
         <span className="badge badge-on"><span className="w-2 h-2 rounded-full dot-on" />On</span>
         <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />No Power</span>
-        <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Unknown</span>
+        <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Future</span>
       </div>
 
       {/* Recent events — the single editable list (replaces the old History tab). */}
