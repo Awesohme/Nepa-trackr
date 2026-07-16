@@ -41,6 +41,8 @@ export default function TimelineView() {
   const [visible, setVisible] = useState(PAGE_INITIAL);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
+  const [markingDay, setMarkingDay] = useState(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const [nowTs, setNowTs] = useState(() => Date.now());
   const scrollRef = useRef(null);
 
@@ -195,6 +197,60 @@ export default function TimelineView() {
     loadEntries();
   }
 
+  async function insertUnknownForDate(date) {
+    const start = new Date(date);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const res = await fetch('/api/entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'unknown',
+        started_at: start.toISOString(),
+        ended_at: end.toISOString(),
+        duration_minutes: null,
+        notes: null,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Failed (${res.status})`);
+    }
+  }
+
+  async function markDayUnknown(date) {
+    setMarkingDay(date);
+    try {
+      await insertUnknownForDate(date);
+      loadEntries();
+    } catch (e) {
+      console.error('Mark day failed', e);
+      alert(e.message);
+    } finally {
+      setMarkingDay(null);
+    }
+  }
+
+  async function markAllDaysUnknown() {
+    const pastDays = dayLabels.filter(d => d <= new Date());
+    setMarkingAll(true);
+    let failed = 0;
+    for (const d of pastDays) {
+      try {
+        await insertUnknownForDate(d);
+      } catch (e) {
+        console.error('Mark day failed', d, e);
+        failed++;
+      }
+    }
+    setMarkingAll(false);
+    if (failed > 0) {
+      alert(`Marked ${pastDays.length - failed} day(s), ${failed} failed.`);
+    }
+    loadEntries();
+  }
+
   // Duration of an entry derived from the log itself: a period runs until the NEXT
   // status change (the next-newer entry's start), regardless of any stored ended_at —
   // which can drift (e.g. an orphaned close). entries are newest-first, so the next
@@ -265,6 +321,18 @@ export default function TimelineView() {
                   >
                     {todayRow ? 'Today' : date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}
                   </div>
+                  <button
+                    onClick={() => markDayUnknown(date)}
+                    disabled={markingDay?.getTime() === date.getTime()}
+                    className="shrink-0 p-1 rounded text-muted hover:text-yellow-500 transition-colors disabled:opacity-50"
+                    title="Mark day as Unknown"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <circle cx="12" cy="12" r="10" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                      <path d="M12 17h.01" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                   {/* relative wrapper so run-duration labels can overlay the hour cells */}
                   <div className="relative flex gap-px flex-1">
                     {HOURS.map(hour => {
@@ -327,6 +395,13 @@ export default function TimelineView() {
         <span className="badge badge-off"><span className="w-2 h-2 rounded-full dot-off" />No Power</span>
         <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: '#71717a' }} />Unknown</span>
         <span className="badge badge-unknown"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} />Future</span>
+        <button
+          onClick={markAllDaysUnknown}
+          disabled={markingAll}
+          className="ml-auto text-[10px] font-medium text-muted hover:text-yellow-500 transition-colors disabled:opacity-50"
+        >
+          {markingAll ? 'Marking…' : 'Mark all as Unknown'}
+        </button>
       </div>
 
       {/* Recent events — the single editable list (replaces the old History tab). */}

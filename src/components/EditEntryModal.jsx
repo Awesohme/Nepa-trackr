@@ -9,6 +9,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
   const [endedAt, setEndedAt] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   // Sync fields each time the modal opens (edit -> entry's values; create -> defaults).
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
     e.preventDefault();
     if (!startedAt) return;
     setSaving(true);
+    setError('');
     try {
       const body = {
         ...(isEdit ? { id: entry.id } : {}),
@@ -41,9 +43,15 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
         body: JSON.stringify(body),
       });
 
-      if (res.ok && onSaved) onSaved();
+      if (res.ok) {
+        if (onSaved) onSaved();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `Save failed (${res.status})`);
+      }
     } catch (e) {
       console.error('Save failed', e);
+      setError('Network error — could not reach server');
     } finally {
       setSaving(false);
     }
@@ -121,6 +129,12 @@ export default function EditEntryModal({ open, entry, onSaved, onCancel }) {
               />
             </div>
           </div>
+
+          {error && (
+            <div className="px-6 pb-2">
+              <div className="badge badge-off w-full justify-start px-3 py-2 rounded-xl text-xs">{error}</div>
+            </div>
+          )}
 
           {/* Sticky action bar */}
           <div className="flex gap-3 px-6 py-4 glass border-x-0 border-b-0">
